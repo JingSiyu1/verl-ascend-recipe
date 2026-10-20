@@ -36,7 +36,7 @@ CANN_INSTALL_PATH=${CANN_INSTALL_PATH:-"/usr/local/Ascend"}
 source ${CANN_INSTALL_PATH}/cann/set_env.sh
 
 # 然后执行安装步骤
-bash verl-ascend-recipe/low_precision/Qwen3-30B-A3B/install.sh
+bash verl-ascend-recipe/low_precision/megatron/install.sh
 
 # 创建软链接
 cd verl
@@ -53,7 +53,7 @@ ln -s ../Megatron-LM/megatron megatron
 2. quant_model_description.json文件生成
 
 ```bash
-python /verl-ascend-recipe/low_precision/Qwen3-30B-A3B/tool/smart_create_mxfp8_weight_dir.py /model/Qwen3-30B-A3B /model/Qwen3-30B-A3B-MXFP8
+python /verl-ascend-recipe/low_precision/tool/smart_create_mxfp8_weight_dir.py /model/Qwen3-30B-A3B /model/Qwen3-30B-A3B-MXFP8
 ```
 
 就会生成一个Qwen3-30B-A3B-MXFP8文件夹以及需要的quant_model_description.json
@@ -65,7 +65,7 @@ python /verl-ascend-recipe/low_precision/Qwen3-30B-A3B/tool/smart_create_mxfp8_w
 
 ```bash
 cd verl
-bash ../verl-ascend-recipe/low_precision/Qwen3-30B-A3B/examples/ray_start.sh
+bash ../verl-ascend-recipe/low_precision/megatron/examples/Qwen3-30B-A3B/ray_start.sh
 ```
 
 并在上述脚本训练开始第一步时进行绑核操作，可提高性能

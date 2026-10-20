@@ -42,10 +42,10 @@ pip install triton-ascend==3.2.2 --extra-index-url https://triton-ascend.osinfra
 
 echo "7. apply patch"
 cd Megatron-LM
-git apply --whitespace=nowarn ../verl-ascend-recipe/low_precision/Qwen3-30B-A3B/patch/megatron.patch
+git apply --whitespace=nowarn ../verl-ascend-recipe/low_precision/megatron/patch/megatron.patch
 cd ..
 cd verl
-git apply --whitespace=nowarn ../verl-ascend-recipe/low_precision/Qwen3-30B-A3B/patch/verl.patch
+git apply --whitespace=nowarn ../verl-ascend-recipe/low_precision/megatron/patch/verl.patch
 cd ..
 
 echo "8. install MindStudio-Boost"
