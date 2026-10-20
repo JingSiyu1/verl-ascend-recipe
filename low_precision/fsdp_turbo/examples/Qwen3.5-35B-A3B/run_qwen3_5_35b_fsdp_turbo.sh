@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# dependency: GPU vllm==0.18.0, transformers@<cc7ab9be>
-# dependency: NPU vllm==0.18.0, vllm-ascend@<54879467>, transformers@<cc7ab9be>
+# 依赖版本见 low_precision/fsdp_turbo/readme.md「环境版本」矩阵。
 
 set -xeuo pipefail
 
@@ -21,11 +20,8 @@ ROLLOUT_GPU_MEM_UTIL=${ROLLOUT_GPU_MEM_UTIL:-0.5}
 
 RAY_DATA_HOME=${RAY_DATA_HOME:-"${HOME}/verl"}
 MODEL_PATH=${MODEL_PATH:-"${RAY_DATA_HOME}/models/Qwen3.5-35B-A3B"}
-CKPTS_DIR=${CKPTS_DIR:-"${RAY_DATA_HOME}/ckpts/${PROJECT_NAME}/${EXPERIMENT_NAME}"}
 TRAIN_FILE=${TRAIN_FILE:-"${RAY_DATA_HOME}/data/geo3k/train.parquet"}
 TEST_FILE=${TEST_FILE:-"${RAY_DATA_HOME}/data/geo3k/test.parquet"}
-WORKING_DIR=${WORKING_DIR:-"${PWD}"}
-RUNTIME_ENV=${RUNTIME_ENV:-"${WORKING_DIR}/verl/trainer/runtime_env.yaml"}
 ########################### end user-adjustable ###########################
 
 ########################### derived defaults ###########################
@@ -41,9 +37,9 @@ case "${DEVICE}" in
         export HCCL_HOST_SOCKET_PORT_RANGE=60000-60050
         export HCCL_NPU_SOCKET_PORT_RANGE=61000-61050
         export RAY_EXPERIMENTAL_NOSET_ASCEND_RT_VISIBLE_DEVICES=1
-        n_devices_per_node=8
-        fsdp_size=8
-        EP_SIZE=8
+        n_devices_per_node=${NDEVICES_PER_NODE:-8}
+        fsdp_size=${FSDP_SIZE:-8}
+        EP_SIZE=${EP_SIZE:-8}
         ep_dispatcher=fused
         ;;
     *)

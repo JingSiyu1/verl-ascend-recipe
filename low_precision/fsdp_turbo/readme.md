@@ -1,5 +1,14 @@
 # Qwen3.5-35B-A3B MXFP8 GRPO（FSDPTurbo 链路）on Ascend NPU
 
+> ⚠️ **依赖合入状态提示**：本 recipe 依赖的若干修正**尚未合入上游主仓**。过渡期请按下表使用 fork 分支，上游合入后本节与 `install.sh` 的 pin 会同步更新：
+>
+> | 依赖 | 过渡来源 | 内容 |
+> | :--- | :--- | :--- |
+> | verl | [`JingSiyu1/verl@fsdpturbo-ascend-fixes`](https://github.com/JingSiyu1/verl/tree/fsdpturbo-ascend-fixes) | `afdead79` FSDP 模型合并器 mesh/placement 兼容；`0f6df719` vLLM 量化权重名映射 `translate_weight_names_for_vllm` |
+> | FSDPTurbo | pin `b1793de`（已含 `quant_ignored_modules`） | 其余修正（EFSDP 条件、LPAG×MoE×EP=1 防御）待推送至 fork 后更新 |
+>
+> 缺失这些修正时链路**不是报错而是静默出错**（曾出现 2056 个权重名映射失败 → rollout 全乱码、step0 val 0/601），因此 `install.sh` 末尾的自检为**硬性失败**。
+
 基于 Qwen3.5-35B-A3B 模型在 NPU 上进行 RLHF（GRPO）MXFP8 后训练的样例，训练/推理后端为 **FSDPTurbo（训练侧动态 MXFP8）+ vLLM-Ascend（推理侧 MXFP8 权重加载）**。
 
 本用例基于 1 x Atlas A5（8 x Ascend950DT 96G）实现，开发者可以参照调整。
@@ -11,7 +20,7 @@
 | CANN                   | 9.2.0                        |
 | PyTorch                | 2.10.0+cpu                   |
 | torch\_npu             | 2.10.0.post4                 |
-| verl                   | 55a06a16 (main)              |
+| verl                   | fsdpturbo-ascend-fixes（fork 过渡，见顶部提示；基线 55a06a16+afdead79+0f6df719） |
 | vLLM                   | 0.23.0+empty (0fc695f)       |
 | vLLM-Ascend            | f16cfd1                      |
 | FSDPTurbo              | b1793de                      |
@@ -42,10 +51,10 @@ export PYTHONPATH=$PWD/FSDPTurbo:$PYTHONPATH
 
 本链路**不附带 patch**——相关修改将直接合入 verl / FSDPTurbo 主仓。安装前请确认所用版本包含：
 
-- **verl**：`quant_ignored_modules` 配置支持（训练侧排除 linear_attn 依赖此项，见下文）、vLLM 量化权重名映射（`translate_weight_names_for_vllm`）、FSDP 模型合并器 mesh/placement 兼容修正。
-- **FSDPTurbo**：`quant_ignored_modules` 支持（注意：对 MoE experts 不生效，见下文）、EFSDP 条件修正、LPAG×MoE×EP=1 防御。
+- **verl**：`quant_ignored_modules` 配置支持（训练侧排除 linear_attn 依赖此项，见下文）、vLLM 量化权重名映射（`translate_weight_names_for_vllm`）、FSDP 模型合并器 mesh/placement 兼容修正。主仓合入前请使用 fork 分支 [`JingSiyu1/verl@fsdpturbo-ascend-fixes`](https://github.com/JingSiyu1/verl/tree/fsdpturbo-ascend-fixes)（含 `afdead79` / `0f6df719`）。
+- **FSDPTurbo**：`quant_ignored_modules` 支持（注意：对 MoE experts 不生效，见下文）、EFSDP 条件修正、LPAG×MoE×EP=1 防御。pin `b1793de` 已含 `quant_ignored_modules`；其余修正待推送至 fork 后更新 pin。
 
-上方版本矩阵中的 commit 为**已验证基线**；相关修改合入主仓后，请更新 `install.sh` 中的 pin 并补记 commit 号。`install.sh` 末尾会对 `quant_ignored_modules` 支持做轻量自检，缺失时给出 WARN（bf16 链路不受影响）。
+上方版本矩阵中的 commit 为**已验证基线**；相关修改合入主仓后，请更新 `install.sh` 中的 pin 并补记 commit 号。`install.sh` 末尾会对 `translate_weight_names_for_vllm`（verl 侧）与 `quant_ignored_modules`（FSDPTurbo 侧）做**硬性自检，缺失即退出**——因为缺失时链路不报错而是静默产出错误结果。
 
 ## 权重下载与 quant_model_description.json 生成
 

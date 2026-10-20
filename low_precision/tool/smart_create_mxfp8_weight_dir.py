@@ -87,8 +87,13 @@ def smart_copy_directory(src_dir, dst_dir, size_threshold=10 * 1024 * 1024, verb
         print(f"错误：源路径不是目录: {src_path}")
         return False
 
+    # 目标目录在源目录内部会导致无限递归复制（walk 会把刚写入的目标再次复制）
+    if dst_path == src_path or dst_path.is_relative_to(src_path):
+        print(f"错误：目标目录位于源目录内部（{dst_path} ⊂ {src_path}），已拒绝")
+        return False
+
     # 统计信息
-    stats = {"copied": 0, "linked": 0, "dirs": 0, "copied_size": 0, "linked_size": 0}
+    stats = {"copied": 0, "linked": 0, "dirs": 0, "copied_size": 0, "linked_size": 0, "failed": 0}
 
     print(f"源目录: {src_path}")
     print(f"目标目录: {dst_path}")
@@ -117,7 +122,12 @@ def smart_copy_directory(src_dir, dst_dir, size_threshold=10 * 1024 * 1024, verb
 
             # 如果目标文件已存在，先删除
             if dst_file.exists() or dst_file.is_symlink():
-                dst_file.unlink()
+                try:
+                    dst_file.unlink()
+                except OSError as e:
+                    stats["failed"] += 1
+                    print(f"[错误] 无法替换已存在文件 {file_rel_path}: {e}")
+                    continue
 
             if file_size > size_threshold:
                 # 大文件：创建软链接
@@ -128,6 +138,7 @@ def smart_copy_directory(src_dir, dst_dir, size_threshold=10 * 1024 * 1024, verb
                     if verbose:
                         print(f"[链接] {file_rel_path} ({format_size(file_size)})")
                 except OSError as e:
+                    stats["failed"] += 1
                     print(f"[错误] 无法创建链接 {file_rel_path}: {e}")
             else:
                 # 小文件：直接复制
@@ -138,6 +149,7 @@ def smart_copy_directory(src_dir, dst_dir, size_threshold=10 * 1024 * 1024, verb
                     if verbose:
                         print(f"[复制] {file_rel_path} ({format_size(file_size)})")
                 except OSError as e:
+                    stats["failed"] += 1
                     print(f"[错误] 无法复制 {file_rel_path}: {e}")
 
     # 打印统计信息
@@ -147,8 +159,10 @@ def smart_copy_directory(src_dir, dst_dir, size_threshold=10 * 1024 * 1024, verb
     print(f"  复制文件: {stats['copied']} 个 (共 {format_size(stats['copied_size'])})")
     print(f"  链接文件: {stats['linked']} 个 (共 {format_size(stats['linked_size'])})")
     print(f"  总计文件: {stats['copied'] + stats['linked']} 个")
+    if stats["failed"]:
+        print(f"  失败: {stats['failed']} 个（复制/链接出错，目标目录不完整）")
 
-    return True
+    return stats["failed"] == 0
 
 
 # ============================================================================
@@ -301,7 +315,6 @@ def create_qwen3_5_quant_model_description(
     quant_config="W8A8_MXFP8",
     quant_method="ascend",
     group_size=32,
-    verbose=True,
 ):
     """结构感知引擎：生成 quant_model_description.json。
 
@@ -464,7 +477,7 @@ def main():
         "-t",
         "--threshold",
         default="10M",
-        help="大小阈值，超过此大小的文件将创建软链接 (默认: 10M)。支持格式: 10M, 1G, 5242880)",
+        help="大小阈值，超过此大小的文件将创建软链接 (默认: 10M)。支持格式: 10M, 1G, 5242880",
     )
     parser.add_argument("-q", "--quiet", action="store_true", help="安静模式，减少输出信息")
     parser.add_argument(
@@ -503,16 +516,19 @@ def main():
     if args.profile and args.quant_pattern:
         parser.error("--quant_pattern 仅用于正则引擎，与 --profile 互斥")
 
-    # 解析大小阈值
+    # 解析大小阈值（支持 10M / 1G / 512K / 纯字节数）
     threshold_str = args.threshold.upper()
-    if threshold_str.endswith("K"):
-        size_threshold = int(float(threshold_str[:-1]) * 1024)
-    elif threshold_str.endswith("M"):
-        size_threshold = int(float(threshold_str[:-1]) * 1024 * 1024)
-    elif threshold_str.endswith("G"):
-        size_threshold = int(float(threshold_str[:-1]) * 1024 * 1024 * 1024)
-    else:
-        size_threshold = int(threshold_str)
+    try:
+        if threshold_str.endswith("K"):
+            size_threshold = int(float(threshold_str[:-1]) * 1024)
+        elif threshold_str.endswith("M"):
+            size_threshold = int(float(threshold_str[:-1]) * 1024 * 1024)
+        elif threshold_str.endswith("G"):
+            size_threshold = int(float(threshold_str[:-1]) * 1024 * 1024 * 1024)
+        else:
+            size_threshold = int(threshold_str)
+    except ValueError:
+        parser.error(f"--threshold 无法解析: {args.threshold!r}（支持格式: 10M, 1G, 512K, 5242880）")
 
     # 执行复制
     success = smart_copy_directory(
@@ -532,7 +548,6 @@ def main():
             quant_config=args.quant_config,
             quant_method=args.quant_method,
             group_size=args.group_size if args.group_size is not None else 32,
-            verbose=not args.quiet,
         )
         errors = validate_qwen3_5_description(description, cfg)
         if errors:

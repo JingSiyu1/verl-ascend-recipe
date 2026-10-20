@@ -53,7 +53,7 @@ ln -s ../Megatron-LM/megatron megatron
 2. quant_model_description.json文件生成
 
 ```bash
-python /verl-ascend-recipe/low_precision/tool/smart_create_mxfp8_weight_dir.py /model/Qwen3-30B-A3B /model/Qwen3-30B-A3B-MXFP8
+python verl-ascend-recipe/low_precision/tool/smart_create_mxfp8_weight_dir.py /model/Qwen3-30B-A3B /model/Qwen3-30B-A3B-MXFP8
 ```
 
 就会生成一个Qwen3-30B-A3B-MXFP8文件夹以及需要的quant_model_description.json
