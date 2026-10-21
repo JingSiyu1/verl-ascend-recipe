@@ -81,8 +81,6 @@ cd verl
 bash ../verl-ascend-recipe/low_precision/fsdp_turbo/examples/Qwen3.5-35B-A3B/run_qwen3_5_35b_fsdp_turbo_mxfp8.sh
 ```
 
-多机场景可使用同目录的 `ray_start.sh`（请先按脚本内注释修改主节点 IP 与通信网卡）。bf16 对照实验使用 `run_qwen3_5_35b_fsdp_turbo.sh`。
-
 ### 为什么必须排除 linear_attn（重要）
 
 Qwen3.5-35B-A3B 的 30 层 gated delta net（`linear_attn`）中，`in_proj_qkv` / `in_proj_z` / `out_proj` 三个投影（共 90 项）对 MXFP8（E4M3 + 块 scale）量化**异常敏感**：递归式线性注意力的投影误差会沿序列递归累积放大，这是 softmax 注意力没有的特性（量化白名单已经把它的递归状态项 `A_log`/`conv1d`/`dt_bias`/`in_proj_a/b`/`norm` 留为 FLOAT，却量化喂给门控/递归动力学的三个投影）。
