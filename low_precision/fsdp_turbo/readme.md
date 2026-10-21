@@ -51,7 +51,7 @@ export PYTHONPATH=$PWD/FSDPTurbo:$PYTHONPATH
 
 本链路**不附带 patch**——相关修改将直接合入 verl / FSDPTurbo 主仓。安装前请确认所用版本包含：
 
-- **verl**：`quant_ignored_modules` 配置支持（训练侧排除 linear_attn 依赖此项，见下文）、vLLM 量化权重名映射（`translate_weight_names_for_vllm`）、FSDP 模型合并器 mesh/placement 兼容修正。主仓合入前请使用 fork 分支 [`JingSiyu1/verl@fsdpturbo-ascend-fixes`](https://github.com/JingSiyu1/verl/tree/fsdpturbo-ascend-fixes)（含 `afdead79` / `0f6df719`）。
+- **verl**：vLLM 量化权重名映射（`translate_weight_names_for_vllm`）、FSDP 模型合并器 mesh/placement 兼容修正。主仓合入前请使用 fork 分支 [`JingSiyu1/verl@fsdpturbo-ascend-fixes`](https://github.com/JingSiyu1/verl/tree/fsdpturbo-ascend-fixes)（含 `afdead79` / `0f6df719`）。
 - **FSDPTurbo**：`quant_ignored_modules` 支持（注意：对 MoE experts 不生效，见下文）、EFSDP 条件修正、LPAG×MoE×EP=1 防御。pin `b1793de` 已含 `quant_ignored_modules`；其余修正待推送至 fork 后更新 pin。
 
 上方版本矩阵中的 commit 为**已验证基线**；相关修改合入主仓后，请更新 `install.sh` 中的 pin 并补记 commit 号。`install.sh` 末尾会对 `translate_weight_names_for_vllm`（verl 侧）与 `quant_ignored_modules`（FSDPTurbo 侧）做**硬性自检，缺失即退出**——因为缺失时链路不报错而是静默产出错误结果。
